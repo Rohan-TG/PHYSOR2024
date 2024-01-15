@@ -1,1 +1,50 @@
+Z: Proton number
+A: Nucleon number
+N: Neutron number
+Energy: Incident neutron energy, in MeV
 
+Separation energies for TCD (Target, compound and daughter) nuclei:
+S2n: 2-neutron Energy in keV
+necessary to remove the nucleon(s) in question from the
+nucleus.
+S2p: 2-proton separation energy
+Sn: 1-neutron separation energy
+Sp - 1-proton separation energy
+Binding energy per nucleon: For target, compound, daughter nuclei. Measured in keV.
+Total binding energy (keV)
+
+Atomic mass: Measured in Daltons
+Parity: Relates to system wavefunctions.
+Gamma deformation: Type of nuclear deformation, measured from 0-60 degrees
+Beta deformation: Deviation from sphericity
+Octupole deformation: Nuclear shape deformation about its 8 poles
+
+Radius: Nuclear radius in fm
+Neutron gap energy: Relates to binding energy. May be relevant to exotic
+nuclides
+Neutron chemical energy: Correlated with separation energy
+Neutron RMS radius: Relates to neutron distribution in nucleus
+Decay constant: Measured in s^−1
+Pairing term: Relates to pairing of nucleons with each other
+
+Mass excess Difference between nuclide mass and sum of constituent
+nucleons, for TCD nuclei.
+Z even Nucleon number parity is considered important in capture
+cross sections [46]
+A even
+N even
+Shell term Relates to magic nuclei and nuclear stability [ 47], for TCD
+nuclei
+Nuclear spin Relates to nuclear angular momentum, for TCD nuclei
+Nuclear deformation May affect cross sections [48], for TCD nuclei
+Proton gap energy Similar to neutron gap energy
+Proton chemical energy Similar to neutron chemical potential
+Proton RMS radius Similar to neutron RMS radius
+RMS radius RMS charge radius of nucleus
+Asymmetry See section 2.3.5.1
+Nlow
+Level density parameters (Section 2.3.5.2)
+Ulow
+Ntop
+Utop
+ainf
