@@ -31,16 +31,16 @@ df = pd.read_csv("ENDFBVIII_MT16_XS_features.csv")
 
 df_test.index = range(len(df_test)) # re-label indices
 df.index = range(len(df))
-# df_test = anomaly_remover(dfa = df_test)
-al = range_setter(la=30, ua=210, df=df)
+al = range_setter(la=30, ua=210, df=df) # Mass range of nuclides to use in training and testing.
 
+# Uncomment to fix the test nuclide selection
 # random.seed(a=10)
 
 validation_nuclides = []
-validation_set_size = 20
+validation_set_size = 20 # number of test nuclides
 
 while len(validation_nuclides) < validation_set_size:
-	choice = random.choice(al) # randomly select nuclide from list of all nuclides in ENDF/B-VIII
+	choice = random.choice(al) # randomly select nuclide from list of all nuclides in ENDF/B-VIII (if no seed is passed in line 37)
 	if choice not in validation_nuclides:
 		validation_nuclides.append(choice)
 print("Test nuclide selection complete")
@@ -51,7 +51,7 @@ X_train, y_train = make_train(df=df, validation_nuclides=validation_nuclides, la
 X_test, y_test = make_test(validation_nuclides, df=df_test,) # create test matrix using validation nuclides
 print("Data prep done")
 
-model = xg.XGBRegressor(n_estimators=900, # define regressor
+model = xg.XGBRegressor(n_estimators=900, # Current set of optimal hyperparameters
 						learning_rate=0.008,
 						max_depth=8,
 						subsample=0.18236,
@@ -180,9 +180,9 @@ for i, (pred_xs, true_xs, erg) in enumerate(zip(P_plotmatrix, XS_plotmatrix, E_p
 
 	print(f"Consensus R2: {r2_score(all_libs, all_preds):0.5f}")
 
-	# print(f"Mean gradient: {sum(abs(np.gradient(pred_xs)))/(len(pred_xs)):0.5f}")
 
 
+# Optional feature importance analysis. Type 'y' into the console when prompted to run.
 run_FIA = input("Run FIA? (y/n): ")
 # FIA
 if run_FIA == "y":
@@ -344,8 +344,5 @@ if run_FIA == "y":
 										 # 'AM'
 										 ]) # SHAP feature importance analysis
 	shap_values = explainer(X_test)
-	#
-	#
-	#
 	shap.plots.bar(shap_values, max_display = 70) # display SHAP results
 	shap.plots.waterfall(shap_values[0], max_display=70)
