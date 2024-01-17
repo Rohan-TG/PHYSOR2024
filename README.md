@@ -2,6 +2,15 @@
 Showcase of work done for PHYSOR 2024 paper submission on (n,2n) reactions.
 
 
+
+Instructions for use:
+- Download all python scripts stored in this repository.
+- Download all data files and keep in same directory as the python scripts.
+- For rapid production of multiple predictions, use Comparator.py and follow instructions in comments
+- To produce model uncertainty intervals for a single nuclide at a time, use uncertainty_producer.py
+
+
+
 Data files:
 
 JENDL-5 (34 MB): https://drive.google.com/file/d/1ZbxlA3lAO5a5uXGJ7djI4KtDgLUgt2RU/view?usp=drive_link
