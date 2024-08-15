@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import periodictable
-from matrix_functions import General_plotter, range_setter, make_train, make_test, dsigma_dE, exclusion_func, r2_standardiser
+from matrix_functions import General_plotter, range_setter, make_train, make_test, exclusion_func, r2_standardiser
 import random
 import shap
 import xgboost as xg
