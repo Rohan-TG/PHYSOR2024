@@ -1,73 +1,87 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import periodictable
-from matrix_functions import General_plotter, range_setter, make_train, make_test, r2_standardiser
+from matrix_functions import General_plotter, range_setter, make_train, make_test, dsigma_dE, exclusion_func, r2_standardiser
 import random
 import shap
 import xgboost as xg
-from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_percentage_error
 import time
 
 TENDL = pd.read_csv("TENDL_2021_MT16_XS_features.csv")
 TENDL.index = range(len(TENDL))
 TENDL_nuclides = range_setter(df=TENDL, la=0, ua=210)
 
-JEFF = pd.read_csv('JEFF33_MT16_XS_features.csv')
+JEFF = pd.read_csv('JEFF33_all_features.csv')
 JEFF.index = range(len(JEFF))
 JEFF_nuclides = range_setter(df=JEFF, la=0, ua=210)
 
-JENDL = pd.read_csv('JENDL5_MT16_XS_features.csv')
+JENDL = pd.read_csv('JENDL5_arange_all_features.csv')
 JENDL.index = range(len(JENDL))
 JENDL_nuclides = range_setter(df=JENDL, la=0, ua=210)
 
-CENDL = pd.read_csv('CENDL32_MT16_XS_features.csv')
+CENDL = pd.read_csv('CENDL32_all_features.csv')
 CENDL.index = range(len(CENDL))
 CENDL_nuclides = range_setter(df=CENDL, la=0, ua=210)
 
 
-df_test = pd.read_csv("ENDFBVIII_MT16_XS_features.csv")
-df = pd.read_csv("ENDFBVIII_MT16_XS_features.csv")
+df = pd.read_csv("ENDFBVIII_MT16_XS_feateng.csv")
 
 
-df_test.index = range(len(df_test)) # re-label indices
 df.index = range(len(df))
-al = range_setter(la=30, ua=210, df=df) # Mass range of nuclides to use in training and testing.
+# df_test = anomaly_remover(dfa = df_test)
+al = range_setter(la=30, ua=210, df=df)
 
-# Uncomment to fix the test nuclide selection
+exc = exclusion_func()
+
+
+
+
+
+
 # random.seed(a=10)
 
 validation_nuclides = []
-validation_set_size = 20 # number of test nuclides
+validation_set_size = 25
 
-while len(validation_nuclides) < validation_set_size:
-	choice = random.choice(al) # randomly select nuclide from list of all nuclides in ENDF/B-VIII (if no seed is passed in line 37)
+while len(validation_nuclides) < validation_set_size: # up to 25 nuclides
+	choice = random.choice(al) # randomly select nuclide from list of all nuclides in ENDF/B-VIII
 	if choice not in validation_nuclides:
 		validation_nuclides.append(choice)
 print("Test nuclide selection complete")
 
 
 
-X_train, y_train = make_train(df=df, validation_nuclides=validation_nuclides, la=30, ua=210,) # create training matrix
-X_test, y_test = make_test(validation_nuclides, df=df_test,) # create test matrix using validation nuclides
-print("Data prep done")
+X_train, y_train = make_train(df=df, validation_nuclides=validation_nuclides, la=30, ua=210,
+							  exclusions=exc) # create training matrix
+X_test, y_test = make_test(validation_nuclides, df=df,) # create test matrix using validation nuclides
+print("Data prep complete")
 
-model = xg.XGBRegressor(n_estimators=900, # Current set of optimal hyperparameters
+model = xg.XGBRegressor(n_estimators=950, # define regressor
 						learning_rate=0.008,
 						max_depth=8,
 						subsample=0.18236,
 						max_leaves=0,
 						seed=42, )
 
-model.fit(X_train, y_train)
+model.fit(X_train, y_train, verbose=True,
+		  # early_stopping_rounds=100,
+		  eval_set = [(X_test, y_test)])
 print("Training complete")
-predictions = model.predict(X_test)  # XS predictions
 predictions_ReLU = []
 
-for pred in predictions: # prediction gate
-	if pred >= 0.003:
-		predictions_ReLU.append(pred)
-	else:
-		predictions_ReLU.append(0)
+
+for n in validation_nuclides:
+
+	temp_x, temp_y = make_test(nuclides=[n], df=df)
+	initial_predictions = model.predict(temp_x)
+
+	for p in initial_predictions:
+		if p >= (0.02 * max(initial_predictions)):
+			predictions_ReLU.append(p)
+		else:
+			predictions_ReLU.append(0.0)
+
 
 predictions = predictions_ReLU
 
@@ -102,13 +116,13 @@ for i, (pred_xs, true_xs, erg) in enumerate(zip(P_plotmatrix, XS_plotmatrix, E_p
 	nuc = validation_nuclides[i]  # validation nuclide
 	plt.plot(erg, pred_xs, label='Predictions', color='red')
 	plt.plot(erg, true_xs, label='ENDF/B-VIII', linewidth=2)
-	plt.plot(tendlerg, tendlxs, label="TENDL21", color='dimgrey', linewidth=2)
+	plt.plot(tendlerg, tendlxs, label="TENDL-2021", color='dimgrey', linewidth=2)
 	if nuc in JEFF_nuclides:
-		plt.plot(jefferg, jeffxs, '--', label='JEFF3.3', color='mediumvioletred')
+		plt.plot(jefferg, jeffxs, '--', label='JEFF-3.3', color='mediumvioletred')
 	if nuc in JENDL_nuclides:
-		plt.plot(jendlerg, jendlxs, label='JENDL5', color='green')
+		plt.plot(jendlerg, jendlxs, label='JENDL-5', color='green')
 	if nuc in CENDL_nuclides:
-		plt.plot(cendlerg, cendlxs, '--', label='CENDL3.2', color='gold')
+		plt.plot(cendlerg, cendlxs, '--', label='CENDL-3.2', color='gold')
 	plt.title(f"$\sigma_{{n,2n}}$ for {periodictable.elements[current_nuclide[0]]}-{current_nuclide[1]}")
 	plt.legend()
 	plt.grid()
@@ -116,16 +130,17 @@ for i, (pred_xs, true_xs, erg) in enumerate(zip(P_plotmatrix, XS_plotmatrix, E_p
 	plt.xlabel('Energy / MeV')
 	plt.show()
 
-	mse = mean_squared_error(y_true=true_xs, y_pred=pred_xs)
 	print(f"\n{periodictable.elements[nuc[0]]}-{nuc[1]:0.0f}")
-	time.sleep(0.8)
+	time.sleep(2)
 
 	pred_endfb_mse = mean_squared_error(pred_xs, true_xs)
-	pred_endfb_gated, truncated_endfb, pred_endfb_r2 = r2_standardiser(raw_predictions=pred_xs, library_xs=true_xs)
+	pred_endfb_gated, truncated_endfb, pred_endfb_r2 = r2_standardiser(predicted_xs=pred_xs, library_xs=true_xs)
+
+	endfbmape = mean_absolute_percentage_error(truncated_endfb, pred_endfb_gated)
 	for x, y in zip(pred_endfb_gated, truncated_endfb):
 		all_libs.append(y)
 		all_preds.append(x)
-	print(f"Predictions - ENDF/B-VIII R2: {pred_endfb_r2:0.5f} MSE: {pred_endfb_mse:0.6f}")
+	print(f"Predictions - ENDF/B-VIII R2: {pred_endfb_r2:0.5f} MAPE: {endfbmape:0.4f}")
 
 	# Find r2 w.r.t. other libraries
 	if current_nuclide in CENDL_nuclides:
@@ -133,7 +148,7 @@ for i, (pred_xs, true_xs, erg) in enumerate(zip(P_plotmatrix, XS_plotmatrix, E_p
 		cendl_test, cendl_xs = make_test(nuclides=[current_nuclide], df=CENDL)
 		pred_cendl = model.predict(cendl_test)
 
-		pred_cendl_gated, truncated_cendl, pred_cendl_r2 = r2_standardiser(raw_predictions=pred_cendl, library_xs=cendl_xs)
+		pred_cendl_gated, truncated_cendl, pred_cendl_r2 = r2_standardiser(predicted_xs=pred_cendl, library_xs=cendl_xs)
 
 		pred_cendl_mse = mean_squared_error(pred_cendl, cendl_xs)
 		for x, y in zip(pred_cendl_gated, truncated_cendl):
@@ -147,7 +162,7 @@ for i, (pred_xs, true_xs, erg) in enumerate(zip(P_plotmatrix, XS_plotmatrix, E_p
 		pred_jendl = model.predict(jendl_test)
 
 		pred_jendl_mse = mean_squared_error(pred_jendl, jendl_xs)
-		pred_jendl_gated, truncated_jendl, pred_jendl_r2 = r2_standardiser(raw_predictions=pred_jendl, library_xs=jendl_xs)
+		pred_jendl_gated, truncated_jendl, pred_jendl_r2 = r2_standardiser(predicted_xs=pred_jendl, library_xs=jendl_xs)
 
 		for x, y in zip(pred_jendl_gated, truncated_jendl):
 			all_libs.append(y)
@@ -160,7 +175,7 @@ for i, (pred_xs, true_xs, erg) in enumerate(zip(P_plotmatrix, XS_plotmatrix, E_p
 		pred_jeff = model.predict(jeff_test)
 
 		pred_jeff_mse = mean_squared_error(pred_jeff, jeff_xs)
-		pred_jeff_gated, truncated_jeff, pred_jeff_r2 = r2_standardiser(raw_predictions=pred_jeff, library_xs=jeff_xs)
+		pred_jeff_gated, truncated_jeff, pred_jeff_r2 = r2_standardiser(predicted_xs=pred_jeff, library_xs=jeff_xs)
 		for x, y in zip(pred_jeff_gated, truncated_jeff):
 			all_libs.append(y)
 			all_preds.append(x)
@@ -172,7 +187,7 @@ for i, (pred_xs, true_xs, erg) in enumerate(zip(P_plotmatrix, XS_plotmatrix, E_p
 		pred_tendl = model.predict(tendl_test)
 
 		pred_tendl_mse = mean_squared_error(pred_tendl, tendl_xs)
-		pred_tendl_gated, truncated_tendl, pred_tendl_r2 = r2_standardiser(raw_predictions=pred_tendl, library_xs=tendl_xs)
+		pred_tendl_gated, truncated_tendl, pred_tendl_r2 = r2_standardiser(predicted_xs=pred_tendl, library_xs=tendl_xs)
 		for x, y in zip(pred_tendl_gated, truncated_tendl):
 			all_libs.append(y)
 			all_preds.append(x)
@@ -180,12 +195,12 @@ for i, (pred_xs, true_xs, erg) in enumerate(zip(P_plotmatrix, XS_plotmatrix, E_p
 
 	print(f"Consensus R2: {r2_score(all_libs, all_preds):0.5f}")
 
+	# print(f"Turning points: {dsigma_dE(XS=pred_xs)}")
 
 
-# Optional feature importance analysis. Type 'y' into the console when prompted to run.
-run_FIA = input("Run FIA? (y/n): ")
-# FIA
-if run_FIA == "y":
+fia = int(input("Run FIA? (1): "))
+# Enter 1 to run FIA 
+if fia == 1:
 	model.get_booster().feature_names = ['Z',
 										 'A',
 										 'S2n',
@@ -196,20 +211,20 @@ if run_FIA == "y":
 										 'BEA',
 										 # 'P',
 										 'Snc',
-										 'g-def',
+										 # 'g-def',
 										 'N',
 										 'b-def',
 										 'Sn da',
 										 # 'Sp d',
 										 'S2n d',
 										 'Radius',
-										 'n_g_erg',
+										 # 'n_g_erg',
 										 'n_c_erg',
 										 'n_rms_r',
 										 # 'oct_def',
 										 # 'D_c',
 										 'BEA_d',
-										 'BEA_c',
+										 # 'BEA_c',
 										 # 'Pair_d',
 										 # 'Par_d',
 										 # 'S2n_c',
@@ -218,13 +233,13 @@ if run_FIA == "y":
 										 # 'Z_even',
 										 # 'A_even',
 										 # 'N_even',
-										 'Shell',
+										 # 'Shell',
 										 # 'Parity',
 										 # 'Spin',
 										 'Decay',
 										 # 'Deform',
-										 'p_g_e',
-										 'p_c_e',
+										 # 'p_g_e',
+										 # 'p_c_e',
 										 # 'p_rms_r',
 										 # 'rms_r',
 										 # 'Sp_c',
@@ -232,7 +247,7 @@ if run_FIA == "y":
 										 'Shell_c',
 										 # 'S2p-d',
 										 # 'Shell-d',
-										 'Spin-c',
+										 # 'Spin-c',
 										 # 'Rad-c',
 										 'Def-c',
 										 # 'ME-c',
@@ -244,14 +259,14 @@ if run_FIA == "y":
 										 # 'Par-c',
 										 'BEA-A-d',
 										 # 'Spin-d',
-										 'Def-d',
+										 # 'Def-d',
 										 # 'mag_p',
 										 # 'mag-n',
 										 # 'mag-d',
-										 'Nlow',
+										 # 'Nlow',
 										 # 'Ulow',
 										 # 'Ntop',
-										 'Utop',
+										 # 'Utop',
 										 # 'ainf',
 										 'Asym',
 										 # 'Asym_c',
@@ -281,20 +296,20 @@ if run_FIA == "y":
 										 'BEA',
 										 # 'P',
 										 'Snc',
-										 'g-def',
+										 # 'g-def',
 										 'N',
 										 'b-def',
 										 'Sn da',
 										 # 'Sp d',
 										 'S2n d',
 										 'Radius',
-										 'n_g_erg',
+										 # 'n_g_erg',
 										 'n_c_erg',
 										 'n_rms_r',
 										 # 'oct_def',
 										 # 'D_c',
 										 'BEA_d',
-										 'BEA_c',
+										 # 'BEA_c',
 										 # 'Pair_d',
 										 # 'Par_d',
 										 # 'S2n_c',
@@ -303,13 +318,13 @@ if run_FIA == "y":
 										 # 'Z_even',
 										 # 'A_even',
 										 # 'N_even',
-										 'Shell',
+										 # 'Shell',
 										 # 'Parity',
 										 # 'Spin',
 										 'Decay',
 										 # 'Deform',
-										 'p_g_e',
-										 'p_c_e',
+										 # 'p_g_e',
+										 # 'p_c_e',
 										 # 'p_rms_r',
 										 # 'rms_r',
 										 # 'Sp_c',
@@ -317,7 +332,7 @@ if run_FIA == "y":
 										 'Shell_c',
 										 # 'S2p-d',
 										 # 'Shell-d',
-										 'Spin-c',
+										 # 'Spin-c',
 										 # 'Rad-c',
 										 'Def-c',
 										 # 'ME-c',
@@ -329,14 +344,14 @@ if run_FIA == "y":
 										 # 'Par-c',
 										 'BEA-A-d',
 										 # 'Spin-d',
-										 'Def-d',
+										 # 'Def-d',
 										 # 'mag_p',
 										 # 'mag-n',
 										 # 'mag-d',
-										 'Nlow',
+										 # 'Nlow',
 										 # 'Ulow',
 										 # 'Ntop',
-										 'Utop',
+										 # 'Utop',
 										 # 'ainf',
 										 'Asym',
 										 # 'Asym_c',
@@ -344,5 +359,8 @@ if run_FIA == "y":
 										 # 'AM'
 										 ]) # SHAP feature importance analysis
 	shap_values = explainer(X_test)
+	#
+	#
+	#
 	shap.plots.bar(shap_values, max_display = 70) # display SHAP results
 	shap.plots.waterfall(shap_values[0], max_display=70)
