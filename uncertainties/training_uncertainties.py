@@ -32,23 +32,26 @@ CENDL = pd.read_csv('CENDL32_all_features.csv')
 CENDL.index = range(len(CENDL))
 CENDL_nuclides = range_setter(df=CENDL, la=0, ua=208)
 
-class Colours:
-    BLUE = '\033[94m'
-    GREEN = '\033[92m'
-    RED = '\033[91m'
-    YELLOW = '\033[93m'
-    RESET = '\033[0m'
+# class Colours:
+    # BLUE = '\033[94m'
+    # GREEN = '\033[92m'
+    # RED = '\033[91m'
+    # YELLOW = '\033[93m'
+    # RESET = '\033[0m'
 
-main_bar_format = '{l_bar}%s{bar}%s{r_bar}' % (Colours.BLUE, Colours.BLUE)
+# main_bar_format = '{l_bar}%s{bar}%s{r_bar}' % (Colours.BLUE, Colours.BLUE)
 
-exc = exclusion_func() # 10 sigma with handpicked additions
+exc = exclusion_func() # anomalous data excluded from training
 
 nuclide_queue = [[72,178]]
 
-for q_num in tqdm.tqdm(nuclide_queue, total=len(nuclide_queue), bar_format=main_bar_format):
+gate = 0.02 # 2 % gate for minimum predictions
+energy_row = 4 # Neutron energies are stored in the 5th column of each data matrix row.
+
+for q_num in tqdm.tqdm(nuclide_queue, total=len(nuclide_queue)): # Allows for uncertainty quantification for all nuclides in nuclide queue
 
 	target_nuclide = q_num
-	n_evaluations = 2
+	n_evaluations = 100 # select number of runs for a single nuclide
 
 	jendlerg, jendlxs = General_plotter(df=JENDL, nuclides=[target_nuclide])
 	cendlerg, cendlxs = General_plotter(df=CENDL, nuclides=[target_nuclide])
@@ -57,7 +60,7 @@ for q_num in tqdm.tqdm(nuclide_queue, total=len(nuclide_queue), bar_format=main_
 	endfberg, endfbxs = General_plotter(df=ENDFBVIII, nuclides=[target_nuclide])
 
 
-	validation_set_size = 20
+	validation_set_size = 20 # number of test nuclides resampled in each iteration
 
 
 
@@ -69,6 +72,7 @@ for q_num in tqdm.tqdm(nuclide_queue, total=len(nuclide_queue), bar_format=main_
 
 	print('Data loaded...')
 
+	# metrics for predictions w.r.t. each library
 	endfb_r2s = []
 	cendl_r2s = []
 	tendl_r2s = []
@@ -81,14 +85,14 @@ for q_num in tqdm.tqdm(nuclide_queue, total=len(nuclide_queue), bar_format=main_
 	jeff_rmses = []
 	jendl_rmses = []
 
-	second_bar_format = '{l_bar}%s{bar}%s{r_bar}' % (Colours.RED, Colours.RED)
+	# second_bar_format = '{l_bar}%s{bar}%s{r_bar}' % (Colours.RED, Colours.RED)
 
-	for i in tqdm.tqdm(range(n_evaluations), bar_format=second_bar_format):
+	for i in tqdm.tqdm(range(n_evaluations)):
 		# print(f"\nRun {i + 1}/{n_evaluations}")
 		model_seed = random.randint(a=1, b=10000)
 		target_nuclides = [target_nuclide]
 
-		while len(target_nuclides) < validation_set_size:  # up to 25 nuclides
+		while len(target_nuclides) < validation_set_size: 
 			choice = random.choice(ENDFB_nuclides)  # randomly select nuclide from list of all nuclides in ENDF/B-VIII
 			if choice not in target_nuclides:
 				target_nuclides.append(choice)
@@ -122,14 +126,14 @@ for q_num in tqdm.tqdm(nuclide_queue, total=len(nuclide_queue), bar_format=main_
 			initial_predictions = model.predict(tempx)
 
 			for p in initial_predictions:
-				if p > (0.02 * max(initial_predictions)):
+				if p > (gate * max(initial_predictions)): # apply 2 % gate
 					predictions_ReLU.append(p)
 				else:
 					predictions_ReLU.append(0.0)
 
 		predictions = predictions_ReLU
 
-		if i == 0:
+		if i == 0: # Forms matrix which stores information from each training instance
 			for k, pred in enumerate(predictions):
 				if [X_test[k,0], X_test[k,1]] == target_nuclides[0]:
 					datapoint_matrix.append([pred])
@@ -152,7 +156,7 @@ for q_num in tqdm.tqdm(nuclide_queue, total=len(nuclide_queue), bar_format=main_
 			for i, row in enumerate(X_test):
 				if [row[0], row[1]] == nuclide:
 					dummy_test_XS.append(y_test[i])
-					dummy_test_E.append(row[4])  # Energy values are in 5th row
+					dummy_test_E.append(row[energy_row])  # Energy values are in 5th row
 					dummy_predictions.append(predictions[i])
 
 			XS_plotmatrix.append(dummy_test_XS)
@@ -162,9 +166,9 @@ for q_num in tqdm.tqdm(nuclide_queue, total=len(nuclide_queue), bar_format=main_
 		all_preds = []
 		all_libs = []
 
-		endfbgated, dee, pred_endfb_r2 = r2_standardiser(library_xs=XS_plotmatrix[0], predicted_xs=P_plotmatrix[0])
-		endfb_r2s.append(r2_score(endfbgated, dee))
-		for x, y in zip(dee, endfbgated):
+		endfbgated, pred_endfb_gated, pred_endfb_r2 = r2_standardiser(library_xs=XS_plotmatrix[0], predicted_xs=P_plotmatrix[0]) # only interested in target nuclide metrics
+		endfb_r2s.append(r2_score(endfbgated, pred_endfb_gated))
+		for x, y in zip(pred_endfb_gated, endfbgated):
 			all_libs.append(x)
 			all_preds.append(y)
 		# print(f"Predictions - ENDF/B-VIII R2: {pred_endfb_r2:0.5f} ")
@@ -177,7 +181,7 @@ for q_num in tqdm.tqdm(nuclide_queue, total=len(nuclide_queue), bar_format=main_
 
 			predjendlgated, gated_jendl_xs, jendl_r2 = r2_standardiser(library_xs=jendlxs, predicted_xs=jendlxs_interpolated)
 			jendl_r2s.append(jendl_r2)
-			jendl_rmse = mean_squared_error(predjendlgated, gated_jendl_xs) **0.5
+			jendl_rmse = mean_squared_error(predjendlgated, gated_jendl_xs) **0.5 # rmse
 			jendl_rmses.append(jendl_rmse)
 
 			for x, y in zip(gated_jendl_xs, predjendlgated):
