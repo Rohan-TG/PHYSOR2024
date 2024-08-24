@@ -12,6 +12,8 @@ def make_test_sampler(nuclides, df, use_tqdm=False):
 
 	Returns: xtest - matrix of values for the model to use for making predictions
 	ytest: cross sections
+
+ 	use_tqdm: True if progress bar desired.
 	"""
 
 	ztest = [nuclide[0] for nuclide in nuclides] # first element is the Z-value of the given test nuclide
@@ -955,7 +957,7 @@ def make_train_sampler(df, validation_nuclides, exclusions, la=0, ua=260, use_tq
 			continue # prevents loop from adding test isotope data to training data
 		if [Z[idx], A[idx]] in exclusions:
 			continue
-		if Energy[idx] > 20: # training on data less than 30 MeV
+		if Energy[idx] > 20: # training on data less than 20 MeV
 			continue
 		if A[idx] <= ua and A[idx] >= la: # checks that nuclide is within bounds for A
 			Z_train.append(Z[idx])
