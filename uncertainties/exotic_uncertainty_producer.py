@@ -36,9 +36,9 @@ CENDL_nuclides = range_setter(df=CENDL, la=30, ua=208)
 exc = exclusion_func()
 
 
-target_nuclides = [[40,89]]
+target_nuclides = [[77,189]]
 target_nuclide = target_nuclides[0]
-n_evaluations = 100
+n_evaluations = 10
 
 
 def diff(target):
@@ -69,7 +69,7 @@ def diff(target):
 
 validation_set_size = 1
 
-gate = 0.02
+gate = 0.05
 
 all_consensus_rmses = []
 
@@ -108,8 +108,8 @@ for i in tqdm.tqdm(range(n_evaluations)):
 	model = xg.XGBRegressor(n_estimators=950,  # define regressor
 							learning_rate=0.008,
 							max_depth=8,
-							subsample=0.18236,
-							reg_lambda=25,
+							subsample=0.18,
+							reg_lambda=0,
 							max_leaves=0,
 							seed=42, )
 
