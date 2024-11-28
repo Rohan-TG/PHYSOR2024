@@ -36,9 +36,9 @@ CENDL_nuclides = range_setter(df=CENDL, la=30, ua=208)
 exc = exclusion_func()
 
 
-target_nuclides = [[77,189]]
+target_nuclides = [[52,118]]
 target_nuclide = target_nuclides[0]
-n_evaluations = 10
+n_evaluations = 100
 
 
 def diff(target):
@@ -69,7 +69,7 @@ def diff(target):
 
 validation_set_size = 1
 
-gate = 0.05
+gate = 0.02
 
 all_consensus_rmses = []
 
