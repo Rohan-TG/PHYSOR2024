@@ -36,8 +36,8 @@ CENDL_nuclides = range_setter(df=CENDL, la=30, ua=208)
 exc = exclusion_func()
 
 
-target_nuclides = [[52,118]]
-target_nuclide = target_nuclides[0]
+
+target_nuclide = [52,118]
 n_evaluations = 100
 
 
@@ -66,7 +66,7 @@ def diff(target):
 
 
 
-
+target_nuclides = [target_nuclide]
 validation_set_size = 1
 
 gate = 0.02
