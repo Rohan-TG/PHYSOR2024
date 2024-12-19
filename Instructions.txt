@@ -1,0 +1,18 @@
+1. Generating plots of "well-known" nuclide with uncertainty propagation confidence intervals:
+Using training_uncertainties.py, select nuclide of choice by entering element into the nuclide_queue list in the format [Z,A]. By example, for a single plot of Fe-56:
+
+    nuclide_queue = [[26,56]]
+
+And for multiple nuclides, e.g. Fe-56 and Sn-120:
+
+    nuclide_queue = [[26,56], [50,120]]
+
+Set the number of iterations using the n_evaluations variable (default = 100). To change the gate, use the gate variable, which defaults to 2% or
+
+    gate = 0.02
+
+2. Generating plots of exotic cross section predictions with confidence intervals:
+Use exotic_uncertainty_producer.py in the same way as training_uncertainties.py. 
+
+3. To run cross validation with nested uncertainty propagation, use uncertainties_crossvalidation.py. This script may be used to return various overall performance statistics on the entire set
+of ENDF/B-VIII nuclides used for training. 
